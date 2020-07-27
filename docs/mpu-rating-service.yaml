@@ -1,7 +1,7 @@
 openapi: 3.0.1
 info:
   title: "mpu-rating-service"
-  description: "API сервича успеваемости Московского Политеха"
+  description: "API сервиcа успеваемости Московского Политеха"
   version: "1.0.0"
 servers:
   - url: 'https://rating.6an.ru'
@@ -31,6 +31,8 @@ paths:
           description: Token is invalid or inspired
         '403': 
           description: Permission denied
+      security:     
+      - bearerAuth: []
           
   /api/statements/{number}:
     get:
@@ -55,6 +57,8 @@ paths:
           description: Token is invalid or inspired
         '403': 
           description: Permission denied
+      security:     
+      - bearerAuth: []
     
   /api/student/marks:
     get:
@@ -87,6 +91,8 @@ paths:
           description: Token is invalid or inspired
         '403': 
           description: Permission denied
+      security:     
+      - bearerAuth: []
           
   /api/statements/{number}/certification-date:
     put:
@@ -111,6 +117,8 @@ paths:
           description: Token is invalid or inspired
         '403': 
           description: Permission denied
+      security:     
+      - bearerAuth: []
           
   /statements/{number}/teachers/{teacher_id}:
     put:
@@ -142,6 +150,8 @@ paths:
           description: Token is invalid or inspired
         '403': 
           description: Permission denied
+      security:     
+      - bearerAuth: []
           
     delete:
       summary: Удаляет преподавалетя из ведомости
@@ -172,12 +182,14 @@ paths:
           description: Token is invalid or inspired
         '403': 
           description: Permission denied
+      security: 
+      - bearerAuth: []
           
 components:
 
   securitySchemes:
     bearerAuth:
-      type: https
+      type: http
       scheme: bearer
       bearerFormat: JWT
       description: JWT Токен авторизации

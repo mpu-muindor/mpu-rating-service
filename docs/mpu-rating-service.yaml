@@ -1,0 +1,294 @@
+openapi: 3.0.1
+info:
+  title: "mpu-rating-service"
+  description: "API сервича успеваемости Московского Политеха"
+  version: "1.0.0"
+servers:
+  - url: 'https://rating.6an.ru'
+
+paths:
+  /api/statements:
+    get:
+      summary: "Возвращает список доступных ведомостей"
+      description: Id пользователя берётся из токена. В запросе нужно указать желаемую роль. Потому что в сервисе пользователь может выбирать для себя роли с более низкой ступени. Например, сотрудник факультета может войти как сотрудник кафедры. А администратор может войти вообще под всеми ролями. Дальше проверяется, есть ли у пользователя такая роль на самом деле. Нет - 403. Админ - видит все ведомости. Сотрудник ОПУП - все семестровые ведомости (без переносов и пересдач). Сотрудник кафедры - все ведомости своей кафедры. Сотрудник факультета - все ведомости факультета. Преподаватель - ведомости, в которых он числится преподавателем. Студент - видит только свои ведомости (В них он отображается один даже если ведомость групповая).
+      parameters:
+        - name: role
+          description: "['student', 'teacher', 'admin', 'opup_employee', 'faculity_employee', 'cathedra_employee']"
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Statement'
+        '401': 
+          description: Token is invalid or inspired
+        '403': 
+          description: Permission denied
+          
+  /api/statements/{number}:
+    get:
+      summary: Конкрентная ведомость по номеру
+      description: Студент получит ведомость только если он числится в ней как студент. Преподаватель аналогично. Сотрудник кафедры только если ведомость от кафедры. Сотрудник факультета только если ведомость от кафедры этого факультета. Сотрудник ОПУП если ведомость не на пересдачу. Администратор получит в любом случае. Если у пользователя не будет прав на просмотр ведомости - 403.
+      parameters:
+        - in: path
+          name: number
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Номер ведомости
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Statement'
+        '401': 
+          description: Token is invalid or inspired
+        '403': 
+          description: Permission denied
+    
+  /api/student/marks:
+    get:
+      summary: Возвращает оценки студента 
+      description: Id берётся из токена. Если авторизованный пользователь не студент, вернётся 403.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    statement_number:
+                      type: string
+                      format: uuid
+                    course:
+                      type: integer
+                    semester:
+                      type: integer
+                    subject:
+                      type: string
+                    mark_type:
+                      type: string
+                    mark:
+                      type: string
+        '401': 
+          description: Token is invalid or inspired
+        '403': 
+          description: Permission denied
+          
+  /api/statements/{number}/certification-date:
+    put:
+      summary: Устанавливает дату аттестации 
+      description: Дату можно установить только если она ещё не установлена. Установить её могут сотрудник ОПУП, сотрудники факультета или кафедры, администратор.
+      parameters:
+        - in: path
+          name: number
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Номер ведомости
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Statement'
+        '401': 
+          description: Token is invalid or inspired
+        '403': 
+          description: Permission denied
+          
+  /statements/{number}/teachers/{teacher_id}:
+    put:
+      summary: Добавляет преподавателя в ведомость 
+      description: Добавить преподавателя могут сотрудники с соответствующим уровнем доступа. Добавить можно только в такую ведомость, в котрой ещё не истекла дата аттестации и ни у одного студента нет оценки.
+      parameters:
+        - in: path
+          name: number
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Номер ведомости
+        - in: path
+          name: teacher_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Id преподавателя
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Statement'
+        '401': 
+          description: Token is invalid or inspired
+        '403': 
+          description: Permission denied
+          
+    delete:
+      summary: Удаляет преподавалетя из ведомости
+      description: Удалить преподавателя могут сотрудники с соответствующим уровнем доступа. Удалить можно только из той ведомости, где ещё нет ни одной оценки и ни один преподаватель не подписал ведомость.
+      parameters:
+        - in: path
+          name: number
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Номер ведомости
+        - in: path
+          name: teacher_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Id преподавателя
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Statement'
+        '401': 
+          description: Token is invalid or inspired
+        '403': 
+          description: Permission denied
+          
+components:
+  schemas:
+      
+      User:
+        type: object
+        properties:
+          id:
+            format: uuid
+            type: string
+          name:
+            type: string
+          record_book_number:
+            type: string
+            nullable: true
+          group:
+            $ref: '#/components/schemas/Group'
+      
+      Faculty:
+        type: object
+        properties:
+          id:
+            type: integer
+          name:
+            type: string
+            
+      Cathedra:
+        type: object
+        properties:
+          id:
+            type: integer
+          name:
+            type: string
+          faculty:
+            $ref: '#/components/schemas/Faculty'
+            
+      Group:
+        type: object
+        properties:
+          id:
+            type: integer
+          name:
+            type: string
+          
+      Statement:
+        type: object
+        properties:
+          number:
+            type: string
+            format: uuid
+          kind:
+            type: string
+          type: 
+            type: string
+            nullable: true
+          is_individual:
+            type: boolean
+            default: false
+          subject:
+            type: string
+          mark_type:
+            type: string
+          cathedra:
+            $ref: '#/components/schemas/Cathedra'
+          certification_from:
+            type: string
+            format: date-time
+            nullable: true
+          certification_to:
+            type: string
+            format: date-time
+            nullable: true
+          unblocking_from:
+            type: string
+            format: date-time
+            nullable: true
+          unblocking_to:
+            type: string
+            format: date-time
+            nullable: true
+          closing_date:
+            type: string
+            format: date-time
+            nullable: true
+          course:
+            type: integer
+          semester:
+            type: integer
+          education_form:
+            type: string
+            nullable: true
+          profile:
+            type: string
+          teachers:
+            type: object
+            properties:
+              status:
+                type: string
+                nullable: true
+                description: Статус в составе комиссии. Член, председатель
+              has_signature:
+                type: boolean
+                default: false
+                description: Подписал преподаватель ведомость или нет
+              teacher:
+                $ref: '#/components/schemas/User'
+          students:
+            type: object
+            properties:
+              ticket_number:
+                type: string
+                nullable: true
+                description: Статус в составе комиссии. Член, председатель
+              mark:
+                type: string
+              student:
+                $ref: '#/components/schemas/User'
+                  
+            
+      
